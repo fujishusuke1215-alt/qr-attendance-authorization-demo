@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:18.7-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-attendance}
+      POSTGRES_USER: ${POSTGRES_USER:-attendance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-attendance}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - attendance_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-attendance} -d ${POSTGRES_DB:-attendance}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      AUTH_MODE: ${AUTH_MODE:-dev}
+      DATABASE_URL: postgres://${POSTGRES_USER:-attendance}:${POSTGRES_PASSWORD:-attendance}@db:5432/${POSTGRES_DB:-attendance}
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:5173}
+      QR_HMAC_KEY_BASE64: ${QR_HMAC_KEY_BASE64:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      QR_SITE_ID: ${QR_SITE_ID:-head-office}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}
+      ENTRA_API_AUDIENCE: ${ENTRA_API_AUDIENCE:-api://00000000-0000-0000-0000-000000000000}
+      RUST_LOG: ${RUST_LOG:-info}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_AUTH_MODE: ${VITE_AUTH_MODE:-dev}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_ENTRA_TENANT_ID: ${VITE_ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}
+        VITE_ENTRA_CLIENT_ID: ${VITE_ENTRA_CLIENT_ID:-00000000-0000-0000-0000-000000000000}
+        VITE_ENTRA_API_SCOPE: ${VITE_ENTRA_API_SCOPE:-api://00000000-0000-0000-0000-000000000000/access_as_user}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+
+volumes:
+  attendance_data:

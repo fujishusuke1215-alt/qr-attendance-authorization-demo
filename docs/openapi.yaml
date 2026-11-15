@@ -1,0 +1,180 @@
+openapi: 3.1.0
+info:
+  title: QR Attendance and HR Authorization Demo API
+  version: 1.0.0
+  description: |
+    Independent portfolio implementation. Attendance scan requests require a validated active employee profile.
+    Check-in and check-out are each limited to one event per employee per Asia/Tokyo work date.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+  - developmentUser: []
+paths:
+  /me:
+    get:
+      summary: Return the authenticated employee profile and backend capabilities
+      responses:
+        '200': { description: Current session }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /attendance/today:
+    get:
+      summary: Return the current employee's attendance for the Tokyo work date
+      responses:
+        '200': { description: Check-in and check-out state }
+        '422': { description: Employee profile is incomplete; no write is made }
+  /attendance/scan:
+    post:
+      summary: Verify a signed QR token and record one attendance event
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        '201': { description: A new attendance event was recorded }
+        '200': { description: The same idempotency key already recorded this event }
+        '400': { description: QR token is invalid or no longer current }
+        '409': { description: Another event of this kind is already recorded for this workday }
+        '422': { description: Employee profile is incomplete; no write is made }
+  /attendance/scope:
+    get:
+      summary: Read attendance within HR-derived or manually granted department scopes
+      parameters:
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: Authorized attendance records }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/qr:
+    get:
+      summary: Read active check-in/check-out tokens and recent revision history
+      responses:
+        '200': { description: QR channels and history }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/qr/{kind}/rotate:
+    post:
+      summary: Increment a channel revision and invalidate its previous token
+      parameters:
+        - in: path
+          name: kind
+          required: true
+          schema: { type: string, enum: [check_in, check_out] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision]
+              properties:
+                expected_revision: { type: integer, format: int64 }
+      responses:
+        '200': { description: New token and revision }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Optimistic revision check failed }
+  /admin/departments/tree:
+    get:
+      summary: Read the HR-derived department hierarchy
+      responses:
+        '200': { description: Department nodes with stable IDs and parent references }
+  /admin/permissions:
+    get:
+      summary: List manual and HR-derived grants as separate rows
+      responses:
+        '200': { description: Authorization grants with source and actor }
+  /admin/users:
+    get:
+      summary: List active people as targets for a manual permission change
+      responses:
+        '200': { description: User IDs and safe display attributes }
+  /admin/permissions/admin-roles:
+    post:
+      summary: Manually grant the administrator role
+      responses:
+        '200': { description: Grant result }
+  /admin/permissions/admin-roles/{user_id}:
+    delete:
+      summary: Revoke only the manual administrator grant
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Grant result }
+  /admin/permissions/scopes:
+    post:
+      summary: Manually grant manager read access to a department
+      responses:
+        '200': { description: Grant result }
+  /admin/permissions/scopes/{user_id}/{department_id}:
+    delete:
+      summary: Revoke only the manual department-scope grant
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: department_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Manual result and whether an automatic grant remains }
+  /admin/hr-sync:
+    get:
+      summary: Read the latest manual HR sync and its stage results
+      responses:
+        '200': { description: Latest run and stage information, or null before first run }
+    post:
+      summary: Start a reproducible fixture-backed HR snapshot reconciliation
+      responses:
+        '202': { description: Sync run ID for polling }
+  /admin/hr-sync/runs/{run_id}:
+    get:
+      summary: Poll a sync run, stage state, and safe failure detail
+      parameters:
+        - in: path
+          name: run_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Sync run detail }
+        '404': { description: Run not found }
+  /admin/audit:
+    get:
+      summary: Read the append-only audit stream
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200': { description: Recent audit events }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Entra ID API access token; issuer and audience are validated by the backend.
+    developmentUser:
+      type: apiKey
+      in: header
+      name: X-Dev-User
+      description: Local development only; disabled when APP_ENV=production.
+  responses:
+    Unauthorized:
+      description: Authentication is required or the identity is not provisioned.
+    Forbidden:
+      description: The backend found no applicable administrator or department grant.

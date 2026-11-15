@@ -1,0 +1,22 @@
+FROM node:24.22.1-alpine AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+ARG VITE_AUTH_MODE=entra
+ARG VITE_API_BASE_URL=/api
+ARG VITE_ENTRA_TENANT_ID=00000000-0000-0000-0000-000000000000
+ARG VITE_ENTRA_CLIENT_ID=00000000-0000-0000-0000-000000000000
+ARG VITE_ENTRA_API_SCOPE=api://00000000-0000-0000-0000-000000000000/access_as_user
+ENV VITE_AUTH_MODE=${VITE_AUTH_MODE} \
+    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_ENTRA_TENANT_ID=${VITE_ENTRA_TENANT_ID} \
+    VITE_ENTRA_CLIENT_ID=${VITE_ENTRA_CLIENT_ID} \
+    VITE_ENTRA_API_SCOPE=${VITE_ENTRA_API_SCOPE}
+RUN pnpm build
+
+FROM nginx:1.29-alpine AS runtime
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80

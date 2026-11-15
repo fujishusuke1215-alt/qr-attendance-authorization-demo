@@ -1,0 +1,14 @@
+{
+  "snapshot_id": "fictional-org-2026-11-r3",
+  "complete": true,
+  "departments": [
+    { "identity_code": "ORG-ROOT", "code": "E-000", "aliases": [], "name": "Example Holdings", "parent_identity_code": null, "active": true },
+    { "identity_code": "ORG-ENGINEERING", "code": "E-110", "aliases": ["ENG-OLD"], "name": "Engineering", "parent_identity_code": "ORG-ROOT", "active": true },
+    { "identity_code": "ORG-PEOPLE", "code": "P-210", "aliases": [], "name": "People Operations", "parent_identity_code": "ORG-ROOT", "active": true }
+  ],
+  "employees": [
+    { "employee_code": "DEMO-ADMIN", "display_name": "Aoi Admin", "email": "admin@example.test", "job_code": "HR_ADMIN", "job_code_field_present": true, "job_title": "Demo administrator", "active": true, "department_identity_codes": ["ORG-PEOPLE"] },
+    { "employee_code": "DEMO-MANAGER", "display_name": "Ren Manager", "email": "manager@example.test", "job_code": "DEPT_MANAGER", "job_code_field_present": true, "job_title": "Demo department manager", "active": true, "department_identity_codes": ["ORG-ENGINEERING"] },
+    { "employee_code": "DEMO-STAFF", "display_name": "Mio Staff", "email": "staff@example.test", "job_code": "ASSOCIATE", "job_code_field_present": true, "job_title": "Demo employee", "active": true, "department_identity_codes": ["ORG-ENGINEERING"] }
+  ]
+}
