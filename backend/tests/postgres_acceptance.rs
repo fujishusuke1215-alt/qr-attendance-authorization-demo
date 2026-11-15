@@ -46,6 +46,7 @@ async fn postgres_acceptance_covers_auth_attendance_qr_permissions_and_hr_reconc
 
     let complete_user_id = insert_test_user(&pool, Some("present@example.test")).await;
     let incomplete_user_id = insert_test_user(&pool, None).await;
+    let admin_id = Uuid::parse_str("10000000-0000-4000-8000-000000000001").unwrap();
     let signer = QrSigner::from_base64(
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
         "head-office",
@@ -182,20 +183,13 @@ async fn postgres_acceptance_covers_auth_attendance_qr_permissions_and_hr_reconc
         "missing email/profile data cannot create an attendance event"
     );
 
-    sqlx::query(
-        "INSERT INTO user_roles(user_id, role, grant_source) VALUES ($1, 'admin', 'manual')",
-    )
-    .bind(complete_user_id)
-    .execute(&pool)
-    .await
-    .unwrap();
     let department_id = Uuid::parse_str("20000000-0000-4000-8000-000000000002").unwrap();
     let grant = app
         .clone()
         .oneshot(json_request(
             "POST",
             "/api/admin/permissions/scopes",
-            complete_user_id,
+            admin_id,
             json!({"user_id": incomplete_user_id, "department_id": department_id}),
         ))
         .await
@@ -210,14 +204,14 @@ async fn postgres_acceptance_covers_auth_attendance_qr_permissions_and_hr_reconc
         .oneshot(request(
             "DELETE",
             &format!("/api/admin/permissions/scopes/{incomplete_user_id}/{department_id}"),
-            complete_user_id,
+            admin_id,
             None,
             None,
         ))
         .await
         .unwrap();
     assert_eq!(revoke.status(), StatusCode::OK);
-    let manual_audit_count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE actor_user_id = $1 AND action IN ('authorization.manual_scope_granted', 'authorization.manual_scope_revoked')").bind(complete_user_id).fetch_one(&pool).await.unwrap();
+    let manual_audit_count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE actor_user_id = $1 AND action IN ('authorization.manual_scope_granted', 'authorization.manual_scope_revoked')").bind(admin_id).fetch_one(&pool).await.unwrap();
     assert_eq!(
         manual_audit_count, 2,
         "manual grant and revocation are both audited"
@@ -228,7 +222,7 @@ async fn postgres_acceptance_covers_auth_attendance_qr_permissions_and_hr_reconc
         .oneshot(json_request(
             "POST",
             "/api/admin/qr/check_in/rotate",
-            complete_user_id,
+            admin_id,
             json!({"expected_revision": revision}),
         ))
         .await
@@ -244,7 +238,7 @@ async fn postgres_acceptance_covers_auth_attendance_qr_permissions_and_hr_reconc
         .oneshot(json_request(
             "POST",
             "/api/admin/qr/check_in/rotate",
-            complete_user_id,
+            admin_id,
             json!({"expected_revision": revision}),
         ))
         .await
@@ -287,7 +281,6 @@ async fn postgres_acceptance_covers_auth_attendance_qr_permissions_and_hr_reconc
         "the rotated QR verifies, then the explicit one-check-in-per-day rule rejects a duplicate"
     );
 
-    let admin_id = Uuid::parse_str("10000000-0000-4000-8000-000000000001").unwrap();
     let base_source = FixtureHrSource;
     let base_snapshot = base_source.load_snapshot().await.unwrap();
     let sync = SyncService::new(pool.clone(), std::sync::Arc::new(base_source));

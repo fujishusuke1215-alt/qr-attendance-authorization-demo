@@ -86,7 +86,7 @@ CREATE INDEX attendance_events_by_user_idx ON attendance_events(user_id, work_da
 
 CREATE TABLE audit_events (
     id BIGSERIAL PRIMARY KEY,
-    actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    actor_user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
     action TEXT NOT NULL,
     subject_type TEXT,
     subject_id TEXT,
