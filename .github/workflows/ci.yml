@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
-        run: docker build -t attendance-service:ci ./backend
+        run: docker build -t attendance-service:ci -f backend/Dockerfile .
       - name: Build frontend image
         run: >-
           docker build -t attendance-ui:ci

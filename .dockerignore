@@ -1,0 +1,10 @@
+.git
+work
+outputs
+backend/target
+frontend/node_modules
+frontend/dist
+frontend/coverage
+.env
+.env.*
+!.env.example
