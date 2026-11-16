@@ -111,6 +111,7 @@ export function PermissionsPage() {
         </div>}
         <div className="grant-legend"><span><GrantSourceBadge source="manual" /> 管理者の操作</span><span><GrantSourceBadge source="external_hr_role" /> HR同期の結果</span></div>
       </section>
+    </div>
 
     <section className="surface history-panel"><div className="section-heading"><div><p className="eyebrow">AUDIT TRAIL</p><h2>最近の変更履歴</h2></div><span className="count-chip">直近 {audit.length} 件</span></div>
       {audit.length === 0 ? <p className="muted">監査記録はまだありません。</p> : <div className="table-wrap"><table><thead><tr><th>操作</th><th>対象</th><th>詳細</th><th>日時</th></tr></thead><tbody>{audit.slice(0, 12).map((entry) => <tr key={entry.id}><td><code>{entry.action}</code></td><td>{entry.subject_id?.slice(0, 18) ?? "—"}</td><td className="audit-detail">{JSON.stringify(entry.detail)}</td><td>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "short", timeStyle: "short" }).format(new Date(entry.occurred_at))}</td></tr>)}</tbody></table></div>}
