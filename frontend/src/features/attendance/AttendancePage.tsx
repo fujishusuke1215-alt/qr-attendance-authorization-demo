@@ -23,7 +23,7 @@ export function AttendancePage() {
       const canReadScopes = session?.capabilities.admin || session?.capabilities.manager_department_ids.length;
       if (canReadScopes) {
         try { setScopeRecords(await getScopedAttendance(result.work_date)); }
-        catch { if (active) setError("閲覧範囲内の打刻状況を読み込めませんでした。"); }
+        catch { if (active) setError("他メンバーの打刻状況を読み込めませんでした。"); }
       }
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof ApiError ? cause.message : "出退勤情報を読み込めませんでした。");
@@ -48,8 +48,8 @@ export function AttendancePage() {
 }
 
 function ManagerAttendancePanel({ records }: { records: AttendanceRecord[] }) {
-  return <section className="surface manager-panel"><div className="section-heading"><div><p className="eyebrow">AUTHORIZED DEPARTMENT VIEW</p><h2>閲覧範囲内の打刻</h2></div><span className="count-chip">{records.length} 件</span></div>
-    {records.length === 0 ? <p className="muted manager-empty">本日の閲覧範囲内に記録された打刻はありません。</p> : <div className="manager-records">{records.map((record) => <article className="manager-record" key={record.id}><span className={`record-kind ${record.kind}`}>{record.kind === "check_in" ? "出勤" : "退勤"}</span><div className="manager-person"><strong>{record.display_name}</strong><small>{record.department_name ?? "所属未設定"}</small></div><time>{timeLabel(record.occurred_at)}</time></article>)}</div>}
+  return <section className="surface manager-panel"><div className="section-heading"><div><p className="eyebrow">AUTHORIZED DEPARTMENT VIEW</p><h2>他メンバーの打刻状況</h2></div><span className="count-chip">{records.length} 件</span></div>
+    {records.length === 0 ? <p className="muted manager-empty">本日の他メンバーの打刻はありません。</p> : <div className="manager-records">{records.map((record) => <article className="manager-record" key={record.id}><span className={`record-kind ${record.kind}`}>{record.kind === "check_in" ? "出勤" : "退勤"}</span><div className="manager-person"><strong>{record.display_name}</strong><small>{record.department_name ?? "所属未設定"}</small></div><time>{timeLabel(record.occurred_at)}</time></article>)}</div>}
   </section>;
 }
 

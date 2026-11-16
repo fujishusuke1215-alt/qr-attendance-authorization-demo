@@ -44,7 +44,7 @@ export function HrSyncPage() {
   }
 
   return <div className="page">
-    <header className="page-title sync-page-title"><div><p className="eyebrow">EXTERNAL HR / SYNC STATUS</p><h1>HRデータ同期</h1><p>架空のHRスナップショットを段階的に検証・反映します。必須項目をすべて検証してから、部門・社員・権限の更新を開始します。</p></div><button className="button button-primary" type="button" onClick={() => void beginSync()} disabled={starting || run?.status === "running"}>{starting || run?.status === "running" ? <><span className="spinner spinner-small" />同期中</> : "手動同期を開始"}</button></header>
+    <header className="page-title sync-page-title"><div><p className="eyebrow">EXTERNAL HR / SYNC STATUS</p><h1>HRデータ同期</h1><p>部門・社員・権限の更新を開始します。</p></div><button className="button button-primary" type="button" onClick={() => void beginSync()} disabled={starting || run?.status === "running"}>{starting || run?.status === "running" ? <><span className="spinner spinner-small" />同期中</> : "手動同期を開始"}</button></header>
     {error && <div className="alert alert-error" role="alert">{error}</div>}
     <div className="sync-overview-grid">
       <section className="surface sync-source-card"><span className="source-icon">⇄</span><div><p className="eyebrow">SOURCE ADAPTER</p><h2>Local JSON fixture</h2><p>実HRサービスに接続せず、再現可能なサンプルスナップショットを読み込みます。</p></div><span className="fixture-badge">DEMO DATA</span></section>

@@ -56,6 +56,15 @@ export function PermissionsPage() {
   }
 
   const target = users.find((user) => user.id === targetUser);
+  const groupedGrants = Array.from(
+    grants.reduce((groups, grant) => {
+      const userGrants = groups.get(grant.user_id);
+      if (userGrants) userGrants.push(grant);
+      else groups.set(grant.user_id, [grant]);
+      return groups;
+    }, new Map<string, AuthorizationGrant[]>()),
+    ([userId, userGrants]) => ({ userId, userGrants }),
+  );
 
   return <div className="page">
     <header className="page-title"><p className="eyebrow">ACCESS CONTROL</p><h1>権限管理</h1><p>HRの役職コードから算出する自動権限と、管理者が付与する手動権限を個別に確認・操作できます。</p></header>
@@ -77,13 +86,31 @@ export function PermissionsPage() {
       </section>
 
       <section className="surface grants-panel">
-        <div className="section-heading"><div><p className="eyebrow">EFFECTIVE ACCESS</p><h2>現在の付与一覧</h2></div><span className="count-chip">{grants.length} 件</span></div>
-        {loading ? <div className="loading-card"><span className="spinner" />権限を読み込んでいます</div> : grants.length === 0 ? <div className="empty-state">権限付与はありません。</div> : <div className="grant-list">
-          {grants.map((grant) => <GrantRow key={`${grant.user_id}:${grant.permission}:${grant.department_id ?? "all"}:${grant.grant_source}`} grant={grant} onRevoke={() => void perform(() => grant.permission === "admin" ? revokeAdminRole(grant.user_id) : revokeScope(grant.user_id, grant.department_id!), grant.permission === "admin" ? "手動管理者権限を取り消しました。" : "手動閲覧権限を取り消しました。")} busy={busy} />)}
+        <div className="section-heading"><div><p className="eyebrow">EFFECTIVE ACCESS</p><h2>現在の付与一覧</h2></div><span className="count-chip">{groupedGrants.length} 人</span></div>
+        {loading ? <div className="loading-card"><span className="spinner" />権限を読み込んでいます</div> : groupedGrants.length === 0 ? <div className="empty-state">権限付与はありません。</div> : <div className="grant-list">
+          {groupedGrants.map(({ userId, userGrants }) => {
+            const user = userGrants[0];
+            return <article className="grant-user-group" key={userId}>
+              <div className="grant-person">
+                <span className="user-avatar user-avatar-small">{user.display_name.slice(0, 1)}</span>
+                <div><strong>{user.display_name}</strong><small>{user.email ?? user.user_id.slice(0, 8)}</small></div>
+              </div>
+              <div className="grant-access-list">
+                {userGrants.map((grant) => <GrantEntry
+                  key={`${grant.permission}:${grant.department_id ?? "all"}:${grant.grant_source}`}
+                  grant={grant}
+                  onRevoke={() => void perform(
+                    () => grant.permission === "admin" ? revokeAdminRole(grant.user_id) : revokeScope(grant.user_id, grant.department_id!),
+                    grant.permission === "admin" ? "手動管理者権限を取り消しました。" : "手動閲覧権限を取り消しました。",
+                  )}
+                  busy={busy}
+                />)}
+              </div>
+            </article>;
+          })}
         </div>}
         <div className="grant-legend"><span><GrantSourceBadge source="manual" /> 管理者の操作</span><span><GrantSourceBadge source="external_hr_role" /> HR同期の結果</span></div>
       </section>
-    </div>
 
     <section className="surface history-panel"><div className="section-heading"><div><p className="eyebrow">AUDIT TRAIL</p><h2>最近の変更履歴</h2></div><span className="count-chip">直近 {audit.length} 件</span></div>
       {audit.length === 0 ? <p className="muted">監査記録はまだありません。</p> : <div className="table-wrap"><table><thead><tr><th>操作</th><th>対象</th><th>詳細</th><th>日時</th></tr></thead><tbody>{audit.slice(0, 12).map((entry) => <tr key={entry.id}><td><code>{entry.action}</code></td><td>{entry.subject_id?.slice(0, 18) ?? "—"}</td><td className="audit-detail">{JSON.stringify(entry.detail)}</td><td>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "short", timeStyle: "short" }).format(new Date(entry.occurred_at))}</td></tr>)}</tbody></table></div>}
@@ -91,11 +118,10 @@ export function PermissionsPage() {
   </div>;
 }
 
-function GrantRow({ grant, onRevoke, busy }: { grant: AuthorizationGrant; onRevoke: () => void; busy: boolean }) {
-  return <article className="grant-row">
-    <div className="grant-person"><span className="user-avatar user-avatar-small">{grant.display_name.slice(0, 1)}</span><div><strong>{grant.display_name}</strong><small>{grant.email ?? grant.user_id.slice(0, 8)}</small></div></div>
-    <div className="grant-description"><strong>{grant.permission === "admin" ? "システム管理者" : grant.department_name}</strong><small>{grant.permission === "admin" ? "全社設定・監査" : "出退勤データの閲覧"}</small></div>
+function GrantEntry({ grant, onRevoke, busy }: { grant: AuthorizationGrant; onRevoke: () => void; busy: boolean }) {
+  return <div className="grant-entry">
+    <div className="grant-description"><strong>{grant.permission === "admin" ? "システム管理者" : grant.department_name ?? "部門未設定"}</strong><small>{grant.permission === "admin" ? "全社設定・監査" : "出退勤データの閲覧"}</small></div>
     <div className="grant-meta"><GrantSourceBadge source={grant.grant_source} /><small>{grant.grant_source === "manual" ? `付与者 ${grant.granted_by?.slice(0, 8) ?? "不明"}` : "役職・所属データに基づく"}</small></div>
     {grant.grant_source === "manual" ? <button className="button button-quiet button-small revoke-button" type="button" disabled={busy} onClick={onRevoke}>取消</button> : <span className="managed-label">HR管理</span>}
-  </article>;
+  </div>;
 }
